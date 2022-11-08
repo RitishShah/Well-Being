@@ -20,7 +20,6 @@ const multer = require('multer');
 const { log } = require('console');
 
 
-
 //for image storage
 let storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -49,7 +48,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 // Database
-require('./database');
+require('./database'); 
 mongoose.set("useCreateIndex", true);
 
 //models
@@ -183,8 +182,16 @@ userSchema.plugin(passportLocalMongoose);
 
 const User = mongoose.model("User", userSchema);
 passport.use(User.createStrategy());
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
+// passport.serializeUser(User.serializeUser());
+// passport.deserializeUser(User.deserializeUser());
+
+passport.serializeUser(function(user, done) {
+    done(null, user);
+  });
+  
+  passport.deserializeUser(function(user, done) {
+    done(null, user);
+  });
 
 
 app.route("/hospital")
@@ -262,6 +269,14 @@ app.get("/ambulance", (req, res) => {
 })
 
 app.post('/register', (req, res) => {
+    var errors = [];
+    if(!req.body.email || !req.body.password) errors.push('Email and Password is required');
+    if(!validateEmail(req.body.email)) errors.push('Email is not in format');
+    if(!validatePassword(req.body.password)) errors.push('Password is not in format');
+    console.log(errors);
+    if(errors.length > 0) {
+        return res.redirect('/');
+    }
     User.register({ username: req.body.username, name: req.body.name, email: req.body.email }, req.body.password, function(err, user) {
         if (err) {
             console.log(err);
@@ -273,11 +288,21 @@ app.post('/register', (req, res) => {
         }
     })
 });
+
+const {validateEmail, validatePassword} = require('./helper');
 app.post('/login', (req, res) => {
     const user = new User({
-        username: req.body.username,
+        email: req.body.email,
         password: req.body.password,
     });
+    var errors = [];
+    if(!req.body.email || !req.body.password) errors.push('Email and Password is required');
+    if(!validateEmail(req.body.email)) errors.push('Email is not in format');
+    if(!validatePassword(req.body.password)) errors.push('Password is not in format');
+    console.log(errors);
+    if(errors.length > 0) {
+        return res.redirect('/');
+    }
     req.login(user, (err) => {
 
         if (err) {
@@ -285,7 +310,6 @@ app.post('/login', (req, res) => {
         } else {
             passport.authenticate("local", { failureRedirect: '/' })(req, res, () => {
                 res.redirect("/index");
-
             })
         }
     })
